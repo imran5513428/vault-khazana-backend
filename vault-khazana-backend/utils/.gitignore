@@ -1,0 +1,119 @@
+# ========================
+# ENVIRONMENT VARIABLES
+# ========================
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# ========================
+# NODE MODULES
+# ========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ========================
+# IDE & EDITOR
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+*.sublime-project
+*.sublime-workspace
+
+# ========================
+# OPERATING SYSTEM
+# ========================
+Thumbs.db
+.DS_Store
+.env.swp
+
+# ========================
+# LOGS
+# ========================
+logs/
+*.log
+lerna-debug.log*
+
+# ========================
+# RUNTIME DATA
+# ========================
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# ========================
+# COVERAGE
+# ========================
+coverage/
+.nyc_output/
+*.lcov
+
+# ========================
+# BUILD OUTPUTS
+# ========================
+dist/
+build/
+out/
+
+# ========================
+# DATABASE
+# ========================
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ========================
+# TEMPORARY FILES
+# ========================
+tmp/
+temp/
+*.tmp
+*.bak
+
+# ========================
+# UPLOADED FILES
+# ========================
+uploads/
+public/uploads/
+
+# ========================
+# CACHE
+# ========================
+.cache/
+.eslintcache
+
+# ========================
+# OS SPECIFIC
+# ========================
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ========================
+# PACKAGE MANAGER
+# ========================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ========================
+# TESTING
+# ========================
+.mocha_output
+test-results/
+
+# ========================
+# VSCODE EXTENSIONS
+# ========================
+.vscode/extensions.json
