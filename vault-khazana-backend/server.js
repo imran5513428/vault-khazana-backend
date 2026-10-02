@@ -4,6 +4,12 @@ import dotenv from 'dotenv';
 import 'express-async-errors';
 import mongoose from 'mongoose';
 
+import authRoutes from './routes/auth.js';
+import cartRoutes from './routes/cart.js';
+import orderRoutes from './routes/orders.js';
+import paymentRoutes from './routes/payments.js';
+import productRoutes from './routes/products.js';
+
 // Load environment variables
 dotenv.config();
 
@@ -20,31 +26,51 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // CORS middleware
 app.use(cors({
-  origin: [process.env.FRONTEND_URL, process.env.FRONTEND_PRODUCTION_URL],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+origin: [process.env.FRONTEND_URL, process.env.FRONTEND_PRODUCTION_URL],
+credentials: true,
+methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // ========================
-// ROUTES (TEMPORARY - For Testing)
+// API ROUTES
 // ========================
 
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    version: process.env.APP_VERSION || '1.0.0',
-    message: '✅ Server is running'
-  });
+res.json({
+status: 'OK',
+timestamp: new Date().toISOString(),
+version: process.env.APP_VERSION || '1.0.0',
+message: '✅ Server is running'
+});
 });
 
+// Authentication
+app.use('/api/auth', authRoutes);
+
+// Products
+app.use('/api/products', productRoutes);
+
+// Cart
+app.use('/api/cart', cartRoutes);
+
+// Orders
+app.use('/api/orders', orderRoutes);
+
+// Payments
+app.use('/api/payments', paymentRoutes);
+
+// ========================
+// ROOT ROUTE
+// ========================
+
 app.get('/', (req, res) => {
-  res.json({
-    message: '🏆 Vault Khazana Backend API',
-    version: '1.0.0',
-    status: 'Online'
-  });
+res.json({
+message: '🏆 Vault Khazana Backend API',
+version: '1.0.0',
+status: 'Online'
+});
 });
 
 // ========================
@@ -52,10 +78,10 @@ app.get('/', (req, res) => {
 // ========================
 
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`
-  });
+res.status(404).json({
+success: false,
+message: "Route ${req.originalUrl} not found"
+});
 });
 
 // ========================
@@ -63,13 +89,13 @@ app.use((req, res) => {
 // ========================
 
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err.message);
-  
-  res.status(err.statusCode || 500).json({
-    success: false,
-    statusCode: err.statusCode || 500,
-    message: err.message || 'Internal Server Error'
-  });
+console.error('❌ Error:', err.message);
+
+res.status(err.statusCode || 500).json({
+success: false,
+statusCode: err.statusCode || 500,
+message: err.message || 'Internal Server Error'
+});
 });
 
 // ========================
@@ -77,19 +103,20 @@ app.use((err, req, res, next) => {
 // ========================
 
 async function connectDatabase() {
-  try {
-    const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/vault-khazana';
-    
-    await mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+try {
+const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/vault-khazana';
 
-    console.log('✅ MongoDB connected successfully');
-  } catch (error) {
-    console.error('❌ MongoDB connection error:', error.message);
-    process.exit(1);
-  }
+await mongoose.connect(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+console.log('✅ MongoDB connected successfully');
+
+} catch (error) {
+console.error('❌ MongoDB connection error:', error.message);
+process.exit(1);
+}
 }
 
 // ========================
@@ -97,13 +124,14 @@ async function connectDatabase() {
 // ========================
 
 async function startServer() {
-  try {
-    // Connect to database
-    await connectDatabase();
+try {
+// Connect to database
+await connectDatabase();
 
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`
+// Start server
+app.listen(PORT, () => {
+  console.log(`
+
 ╔════════════════════════════════════════╗
 ║   🏆 VAULT KHAZANA BACKEND              ║
 ║   Server running on port ${PORT}          ║
@@ -111,12 +139,12 @@ async function startServer() {
 ║   Database: Connected ✅                ║
 ║   Frontend: ${process.env.FRONTEND_URL}   ║
 ╚════════════════════════════════════════╝
-      `);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
+`);
+});
+} catch (error) {
+console.error('Failed to start server:', error);
+process.exit(1);
+}
 }
 
 startServer();
@@ -126,9 +154,9 @@ startServer();
 // ========================
 
 process.on('SIGINT', async () => {
-  console.log('\n📛 Shutting down gracefully...');
-  await mongoose.disconnect();
-  process.exit(0);
+console.log('\n📛 Shutting down gracefully...');
+await mongoose.disconnect();
+process.exit(0);
 });
 
 export default app;
