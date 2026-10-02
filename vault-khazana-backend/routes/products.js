@@ -1,16 +1,16 @@
 import express from 'express';
 import {
-  getAllProducts,
-  getProductById,
-  getProductsByCategory,
-  searchProducts,
-  getFeaturedProducts,
-  getCustomPrintingProducts,
-  validateQuantity,
-  getProductReviews,
-  addProductReview,
-  getTopRatedProducts,
-  getProductSuggestions
+getAllProducts,
+getProductById,
+getProductsByCategory,
+searchProducts,
+getFeaturedProducts,
+getCustomPrintingProducts,
+validateQuantity,
+getProductReviews,
+addProductReview,
+getTopRatedProducts,
+getProductSuggestions
 } from '../controllers/productController.js';
 import { optionalAuth, protect } from '../middleware/auth.js';
 
@@ -38,9 +38,6 @@ router.get('/search', optionalAuth, searchProducts);
 // Get products by category
 router.get('/category/:categoryId', optionalAuth, getProductsByCategory);
 
-// Get single product by ID
-router.get('/:id', optionalAuth, getProductById);
-
 // Validate product quantity
 router.post('/validate/quantity', optionalAuth, validateQuantity);
 
@@ -64,5 +61,9 @@ router.get('/:productId/reviews', getProductReviews);
 
 // Add review (logged-in users only)
 router.post('/:productId/reviews', protect, addProductReview);
+
+// Get single product by ID
+// Keep this route after all specific routes above.
+router.get('/:id', optionalAuth, getProductById);
 
 export default router;
