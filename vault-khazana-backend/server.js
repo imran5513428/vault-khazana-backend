@@ -154,7 +154,3 @@ process.on('SIGINT', async () => {
 });
 
 export default app;
-
-Save and commit this complete file.
-
-Then simply tell me Done. I’ll verify it on GitHub before we move to the next step.
