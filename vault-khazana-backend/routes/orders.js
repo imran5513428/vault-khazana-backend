@@ -1,53 +1,91 @@
 import express from 'express';
 import {
-createOrder,
-getOrderById,
-getUserOrders,
-getAllOrders,
-updateOrderStatus,
-cancelOrder,
-getOrderStats,
-searchOrders
+  createOrder,
+  getOrderById,
+  getUserOrders,
+  getAllOrders,
+  updateOrderStatus,
+  cancelOrder,
+  getOrderStats,
+  searchOrders
 } from '../controllers/orderController.js';
-import { protect, adminOnly } from '../middleware/auth.js';
+import {
+  protect,
+  adminOnly,
+  guestOrUser
+} from '../middleware/auth.js';
 
 const router = express.Router();
 
 // ========================
-// PROTECTED ROUTES (Users)
+// ORDER CREATION
 // ========================
 
-// Create new order
-router.post('/', protect, createOrder);
+// Guest OR logged-in customer can create an order.
+// createOrder() performs the full server-side validation,
+// product lookup, MOQ/step validation, and price calculation.
+router.post('/', guestOrUser, createOrder);
 
-// Get user's orders
+// ========================
+// PROTECTED CUSTOMER ROUTES
+// ========================
+
+// Get logged-in user's orders
 router.get('/my-orders/list', protect, getUserOrders);
 
 // ========================
-// PROTECTED ROUTES (Admin Only)
+// PROTECTED ADMIN ROUTES
 // ========================
 
 // Get all orders (admin)
-router.get('/admin/all', protect, adminOnly, getAllOrders);
+router.get(
+  '/admin/all',
+  protect,
+  adminOnly,
+  getAllOrders
+);
 
 // Search orders (admin)
-router.get('/admin/search', protect, adminOnly, searchOrders);
+router.get(
+  '/admin/search',
+  protect,
+  adminOnly,
+  searchOrders
+);
 
 // Get order statistics (admin)
-router.get('/admin/stats', protect, adminOnly, getOrderStats);
+router.get(
+  '/admin/stats',
+  protect,
+  adminOnly,
+  getOrderStats
+);
 
 // ========================
 // ORDER-SPECIFIC ROUTES
 // ========================
 
 // Cancel order
-router.put('/:orderId/cancel', protect, cancelOrder);
+router.put(
+  '/:orderId/cancel',
+  protect,
+  cancelOrder
+);
 
 // Update order status (admin)
-router.put('/:orderId/status', protect, adminOnly, updateOrderStatus);
+router.put(
+  '/:orderId/status',
+  protect,
+  adminOnly,
+  updateOrderStatus
+);
 
 // Get specific order
 // Keep this route after all specific routes above.
-router.get('/:orderId', protect, getOrderById);
+router.get(
+  '/:orderId',
+  protect,
+  getOrderById
+);
 
 export default router;
