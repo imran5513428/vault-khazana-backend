@@ -7,81 +7,171 @@ const orderSchema = new mongoose.Schema({
     sparse: true
   },
 
+  // Optional because VAULT KHAZANA will support guest checkout.
+  // Logged-in customers can still have their User ID attached.
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'User ID is required']
+    required: false,
+    default: null
   },
 
   items: [{
+    // This is the stable VAULT KHAZANA catalog ID,
+    // not the MongoDB _id.
     productId: {
       type: String,
       required: true
     },
-    productName: String,
+
+    productName: {
+      type: String,
+      required: true
+    },
+
     quantity: {
       type: Number,
       required: true,
       min: 1
     },
+
+    // Final server-controlled unit price used for this order.
     pricePerUnit: {
       type: Number,
-      required: true
+      required: true,
+      min: 0
     },
+
     subtotal: {
       type: Number,
-      required: true
+      required: true,
+      min: 0
     }
   }],
 
   shippingAddress: {
-    fullName: String,
-    email: String,
-    phone: String,
-    street: String,
-    city: String,
-    province: String,
-    postalCode: String,
-    country: { type: String, default: 'Pakistan' }
+    fullName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true
+    },
+
+    phone: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    street: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    city: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    province: {
+      type: String,
+      trim: true
+    },
+
+    postalCode: {
+      type: String,
+      trim: true
+    },
+
+    country: {
+      type: String,
+      default: 'Pakistan',
+      trim: true
+    }
   },
 
   billingAddress: {
-    fullName: String,
-    email: String,
-    phone: String,
-    street: String,
-    city: String,
-    province: String,
-    postalCode: String,
-    country: { type: String, default: 'Pakistan' }
+    fullName: {
+      type: String,
+      trim: true
+    },
+
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true
+    },
+
+    phone: {
+      type: String,
+      trim: true
+    },
+
+    street: {
+      type: String,
+      trim: true
+    },
+
+    city: {
+      type: String,
+      trim: true
+    },
+
+    province: {
+      type: String,
+      trim: true
+    },
+
+    postalCode: {
+      type: String,
+      trim: true
+    },
+
+    country: {
+      type: String,
+      default: 'Pakistan',
+      trim: true
+    }
   },
 
   subtotal: {
     type: Number,
     required: true,
-    default: 0
+    default: 0,
+    min: 0
   },
 
   shippingCost: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0
   },
 
   tax: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0
   },
 
   discount: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0
   },
 
   discountCode: String,
 
   total: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
   },
 
   paymentMethod: {
@@ -102,13 +192,23 @@ const orderSchema = new mongoose.Schema({
 
   orderStatus: {
     type: String,
-    enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+    enum: [
+      'pending',
+      'confirmed',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled'
+    ],
     default: 'pending'
   },
 
   statusHistory: [{
     status: String,
-    timestamp: { type: Date, default: Date.now },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
     notes: String
   }],
 
@@ -117,9 +217,10 @@ const orderSchema = new mongoose.Schema({
 
   notes: String,
 
+  // True when the order was placed without a customer account.
   guestCheckout: {
     type: Boolean,
-    default: false
+    default: true
   },
 
   ip: String,
@@ -140,63 +241,42 @@ const orderSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// Index for quick queries
+// ========================
+// INDEXES
+// ========================
+
 orderSchema.index({ userId: 1 });
 orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 
-// Auto-generate order number
+// ========================
+// AUTO-GENERATE ORDER NUMBER
+// ========================
+
 orderSchema.pre('save', async function(next) {
   if (this.isNew && !this.orderNumber) {
     try {
       const count = await mongoose.model('Order').countDocuments();
       const year = new Date().getFullYear();
       const month = String(new Date().getMonth() + 1).padStart(2, '0');
-      this.orderNumber = `VK-${year}${month}-${String(count + 1).padStart(5, '0')}`;
+
+      this.orderNumber =
+        `VK-${year}${month}-${String(count + 1).padStart(5, '0')}`;
     } catch (error) {
       return next(error);
     }
   }
+
   next();
 });
 
-// Method to update order status
+// ========================
+// UPDATE ORDER STATUS
+// ========================
+
 orderSchema.methods.updateStatus = function(newStatus, notes = '') {
   this.orderStatus = newStatus;
-  this.statusHistory.push({
-    status: newStatus,
-    timestamp: new Date(),
-    notes
-  });
 
-  if (newStatus === 'delivered') {
-    this.deliveredAt = new Date();
-  }
-
-  return this.save();
-};
-
-// Method to get formatted total
-orderSchema.methods.getFormattedTotal = function() {
-  return `Rs ${this.total.toLocaleString('en-PK')}`;
-};
-
-// Method to check if can be cancelled
-orderSchema.methods.canBeCancelled = function() {
-  return ['pending', 'confirmed'].includes(this.orderStatus) && this.paymentStatus !== 'completed';
-};
-
-// Method to get order summary
-orderSchema.methods.getSummary = function() {
-  return {
-    orderNumber: this.orderNumber,
-    total: this.getFormattedTotal(),
-    status: this.orderStatus,
-    items: this.items.length,
-    createdAt: this.createdAt.toLocaleDateString('en-PK')
-  };
-};
-
-export default mongoose.model('Order', orderSchema);
+  this
