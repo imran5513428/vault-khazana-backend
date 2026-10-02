@@ -1,0 +1,49 @@
+Environment variables
+
+.env
+.env.*
+!.env.example
+
+Dependencies
+
+node_modules/
+
+Logs
+
+logs/
+.log
+npm-debug.log
+yarn-debug.log*
+pnpm-debug.log*
+
+Runtime data
+
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+Uploads
+
+uploads/
+
+Coverage
+
+coverage/
+
+Build output
+
+dist/
+build/
+
+OS files
+
+.DS_Store
+Thumbs.db
+
+Editor files
+
+.vscode/
+.idea/
+*.swp
+*.swo
