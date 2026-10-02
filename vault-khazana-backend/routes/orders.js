@@ -1,13 +1,13 @@
 import express from 'express';
 import {
-  createOrder,
-  getOrderById,
-  getUserOrders,
-  getAllOrders,
-  updateOrderStatus,
-  cancelOrder,
-  getOrderStats,
-  searchOrders
+createOrder,
+getOrderById,
+getUserOrders,
+getAllOrders,
+updateOrderStatus,
+cancelOrder,
+getOrderStats,
+searchOrders
 } from '../controllers/orderController.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 
@@ -23,12 +23,6 @@ router.post('/', protect, createOrder);
 // Get user's orders
 router.get('/my-orders/list', protect, getUserOrders);
 
-// Get specific order
-router.get('/:orderId', protect, getOrderById);
-
-// Cancel order
-router.put('/:orderId/cancel', protect, cancelOrder);
-
 // ========================
 // PROTECTED ROUTES (Admin Only)
 // ========================
@@ -42,7 +36,18 @@ router.get('/admin/search', protect, adminOnly, searchOrders);
 // Get order statistics (admin)
 router.get('/admin/stats', protect, adminOnly, getOrderStats);
 
+// ========================
+// ORDER-SPECIFIC ROUTES
+// ========================
+
+// Cancel order
+router.put('/:orderId/cancel', protect, cancelOrder);
+
 // Update order status (admin)
 router.put('/:orderId/status', protect, adminOnly, updateOrderStatus);
+
+// Get specific order
+// Keep this route after all specific routes above.
+router.get('/:orderId', protect, getOrderById);
 
 export default router;
