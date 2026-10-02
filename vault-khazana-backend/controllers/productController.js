@@ -347,4 +347,125 @@ export const getProductReviews = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
   const { page = 1, limit = 10 } = req.query;
 
-  const product = await findProduct
+  const product = await findProductByIdentifier(productId);
+
+  if (!product) {
+    return next(new AppError('Product not found', 404));
+  }
+
+  const pageNum = Math.max(1, Number(page));
+  const limitNum = Math.max(1, Number(limit));
+  const skip = (pageNum - 1) * limitNum;
+
+  const reviews = product.reviews.slice(skip, skip + limitNum);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      reviews,
+      averageRating: product.averageRating,
+      totalRatings: product.totalRatings,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(product.reviews.length / limitNum),
+        totalItems: product.reviews.length
+      }
+    }
+  });
+});
+
+// ========================
+// ADD PRODUCT REVIEW
+// ========================
+
+export const addProductReview = asyncHandler(async (req, res, next) => {
+  const { productId } = req.params;
+  const { rating, comment } = req.body;
+
+  if (!rating) {
+    return next(new AppError('Please provide a rating', 400));
+  }
+
+  if (rating < 1 || rating > 5) {
+    return next(new AppError('Rating must be between 1 and 5', 400));
+  }
+
+  const product = await findProductByIdentifier(productId);
+
+  if (!product) {
+    return next(new AppError('Product not found', 404));
+  }
+
+  const existingReview = product.reviews.find(
+    (review) =>
+      review.userId.toString() === req.user._id.toString()
+  );
+
+  if (existingReview) {
+    return next(
+      new AppError('You have already reviewed this product', 400)
+    );
+  }
+
+  const newReview = {
+    userId: req.user._id,
+    userName: req.user.getFullName(),
+    rating: Number(rating),
+    comment: comment?.trim() || ''
+  };
+
+  product.reviews.push(newReview);
+
+  const totalRating = product.reviews.reduce(
+    (sum, review) => sum + review.rating,
+    0
+  );
+
+  product.averageRating = parseFloat(
+    (totalRating / product.reviews.length).toFixed(2)
+  );
+
+  product.totalRatings = product.reviews.length;
+
+  await product.save();
+
+  res.status(201).json({
+    success: true,
+    message: 'Review added successfully',
+    review: newReview,
+    averageRating: product.averageRating
+  });
+});
+
+// ========================
+// GET PRODUCT SUGGESTIONS
+// ========================
+
+export const getProductSuggestions = asyncHandler(async (req, res, next) => {
+  const { categoryId, limit = 5 } = req.query;
+
+  const filter = {
+    isDiscontinued: false,
+    $or: [
+      { inStock: true, trackInventory: false },
+      {
+        inStock: true,
+        trackInventory: true,
+        stockQuantity: { $gt: 0 }
+      }
+    ]
+  };
+
+  if (categoryId) {
+    filter.categoryId = categoryId;
+  }
+
+  const products = await Product.find(filter)
+    .sort('-isFeatured -averageRating -createdAt')
+    .limit(Number(limit));
+
+  res.status(200).json({
+    success: true,
+    data: products
+  });
+});
