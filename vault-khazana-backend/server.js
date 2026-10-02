@@ -7,7 +7,6 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/auth.js';
 import cartRoutes from './routes/cart.js';
 import orderRoutes from './routes/orders.js';
-import paymentRoutes from './routes/payments.js';
 import productRoutes from './routes/products.js';
 
 // Load environment variables
@@ -57,9 +56,6 @@ app.use('/api/cart', cartRoutes);
 
 // Orders
 app.use('/api/orders', orderRoutes);
-
-// Payments
-app.use('/api/payments', paymentRoutes);
 
 // ========================
 // ROOT ROUTE
@@ -159,6 +155,6 @@ process.on('SIGINT', async () => {
 
 export default app;
 
-Only one functional correction: the 404 message now correctly uses a template literal.
+Save and commit this complete file.
 
-Save/commit this complete file. Don't change anything else yet. Then tell me Done, and I’ll verify the actual GitHub file before we take the next step.
+Then simply tell me Done. I’ll verify it on GitHub before we move to the next step.
