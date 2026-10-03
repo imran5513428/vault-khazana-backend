@@ -275,16 +275,7 @@ function installFinalHandlers() {
 
 async function connectDatabase() {
 
-  const uri = process.env.MONGODB_URI;
-
-  if (!uri) {
-
-    console.error(
-      '❌ MONGODB_URI environment variable is missing.'
-    );
-
-    return false;
-  }
+  const uri = 'mongodb://Admin:[YOUR_PASSWORD]@ac-jizi34c-shard-00-00.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-01.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-02.mw3for0.mongodb.net:27017/?ssl=true&replicaSet=atlas-spixpz-shard-0&authSource=admin&appName=Cluster0';
 
   try {
 
