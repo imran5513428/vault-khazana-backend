@@ -1,15 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import 'express-async-errors';
 import mongoose from 'mongoose';
 
-import authRoutes from './routes/auth.js';
-import cartRoutes from './routes/cart.js';
-import orderRoutes from './routes/orders.js';
-import productRoutes from './routes/products.js';
-
-// Load environment variables
 dotenv.config();
 
 // ========================
@@ -18,6 +11,9 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+let routesLoaded = false;
+let routesError = null;
 
 // ========================
 // MIDDLEWARE
@@ -37,10 +33,9 @@ app.use(cors({
 }));
 
 // ========================
-// API ROUTES
+// HEALTH CHECK
 // ========================
 
-// Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -49,21 +44,14 @@ app.get('/api/health', (req, res) => {
     database: mongoose.connection.readyState === 1
       ? 'Connected'
       : 'Disconnected',
+    routes: routesLoaded
+      ? 'Loaded'
+      : routesError
+        ? 'Failed'
+        : 'Loading',
     message: '✅ Server is running'
   });
 });
-
-// Authentication
-app.use('/api/auth', authRoutes);
-
-// Products
-app.use('/api/products', productRoutes);
-
-// Cart
-app.use('/api/cart', cartRoutes);
-
-// Orders
-app.use('/api/orders', orderRoutes);
 
 // ========================
 // ROOT ROUTE
@@ -76,34 +64,87 @@ app.get('/', (req, res) => {
     status: 'Online',
     database: mongoose.connection.readyState === 1
       ? 'Connected'
-      : 'Disconnected'
+      : 'Disconnected',
+    routes: routesLoaded
+      ? 'Loaded'
+      : routesError
+        ? 'Failed'
+        : 'Loading'
   });
 });
 
 // ========================
-// 404 HANDLER
+// LOAD API ROUTES
 // ========================
 
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`
-  });
-});
+async function loadRoutes() {
+  try {
+    console.log('🔄 Loading API routes...');
 
-// ========================
-// ERROR HANDLER
-// ========================
+    const { default: authRoutes } =
+      await import('./routes/auth.js');
 
-app.use((err, req, res, next) => {
-  console.error('❌ Error:', err.message);
+    const { default: productRoutes } =
+      await import('./routes/products.js');
 
-  res.status(err.statusCode || 500).json({
-    success: false,
-    statusCode: err.statusCode || 500,
-    message: err.message || 'Internal Server Error'
-  });
-});
+    const { default: cartRoutes } =
+      await import('./routes/cart.js');
+
+    const { default: orderRoutes } =
+      await import('./routes/orders.js');
+
+    // Authentication
+    app.use('/api/auth', authRoutes);
+
+    // Products
+    app.use('/api/products', productRoutes);
+
+    // Cart
+    app.use('/api/cart', cartRoutes);
+
+    // Orders
+    app.use('/api/orders', orderRoutes);
+
+    routesLoaded = true;
+
+    console.log('✅ API routes loaded successfully');
+
+    // ========================
+    // 404 HANDLER
+    // ========================
+
+    app.use((req, res) => {
+      res.status(404).json({
+        success: false,
+        message: `Route ${req.originalUrl} not found`
+      });
+    });
+
+    // ========================
+    // ERROR HANDLER
+    // ========================
+
+    app.use((err, req, res, next) => {
+      console.error('❌ Error:', err.message);
+
+      res.status(err.statusCode || 500).json({
+        success: false,
+        statusCode: err.statusCode || 500,
+        message: err.message || 'Internal Server Error'
+      });
+    });
+
+  } catch (error) {
+    routesError = error;
+
+    console.error('❌ API route startup error:');
+    console.error(error);
+
+    console.error(
+      '⚠️ Server will remain online so the deployment platform can detect the port.'
+    );
+  }
+}
 
 // ========================
 // DATABASE CONNECTION
@@ -123,7 +164,9 @@ async function connectDatabase() {
     await mongoose.connect(uri);
 
     console.log('✅ MongoDB connected successfully');
+
     return true;
+
   } catch (error) {
     console.error(
       '❌ MongoDB connection error:',
@@ -131,7 +174,7 @@ async function connectDatabase() {
     );
 
     console.error(
-      '⚠️ Server will remain online so the deployment platform can detect the port.'
+      '⚠️ Server will remain online.'
     );
 
     return false;
@@ -143,10 +186,12 @@ async function connectDatabase() {
 // ========================
 
 // IMPORTANT:
-// Start the HTTP server FIRST so the deployment platform
-// can detect the PORT. MongoDB connects immediately afterward.
+// Start HTTP server FIRST.
+// This allows Abasthan to detect the live port
+// before loading routes or connecting to MongoDB.
 
 const server = app.listen(PORT, () => {
+
   console.log(`
 ╔════════════════════════════════════════╗
 ║   🏆 VAULT KHAZANA BACKEND            ║
@@ -156,8 +201,17 @@ const server = app.listen(PORT, () => {
 ╚════════════════════════════════════════╝
   `);
 
-  // Connect to MongoDB after the HTTP server is listening.
-  connectDatabase();
+  // Load routes and connect to MongoDB
+  // only AFTER the server is listening.
+
+  loadRoutes()
+    .then(() => connectDatabase())
+    .catch((error) => {
+      console.error(
+        '❌ Startup initialization error:',
+        error
+      );
+    });
 });
 
 // ========================
@@ -165,19 +219,26 @@ const server = app.listen(PORT, () => {
 // ========================
 
 async function shutdown(signal) {
+
   console.log(
     `\n📛 ${signal} received. Shutting down gracefully...`
   );
 
   server.close(async () => {
+
     try {
+
       await mongoose.disconnect();
+
       console.log('✅ MongoDB disconnected');
+
     } catch (error) {
+
       console.error(
         '❌ MongoDB disconnect error:',
         error.message
       );
+
     }
 
     process.exit(0);
@@ -185,6 +246,7 @@ async function shutdown(signal) {
 }
 
 process.on('SIGINT', () => shutdown('SIGINT'));
+
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 export default app;
