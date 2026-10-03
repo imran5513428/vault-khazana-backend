@@ -12,8 +12,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-let routesLoaded = false;
-let routesError = null;
+const routeStatus = {
+  auth: 'Loading',
+  products: 'Loading',
+  cart: 'Loading',
+  orders: 'Loading'
+};
+
+const routeErrors = {};
+
+let finalHandlersInstalled = false;
 
 // ========================
 // MIDDLEWARE
@@ -37,18 +45,29 @@ app.use(cors({
 // ========================
 
 app.get('/api/health', (req, res) => {
+  const allRoutesLoaded =
+    Object.values(routeStatus).every(
+      (status) => status === 'Loaded'
+    );
+
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     version: process.env.APP_VERSION || '1.0.0',
-    database: mongoose.connection.readyState === 1
-      ? 'Connected'
-      : 'Disconnected',
-    routes: routesLoaded
+
+    database:
+      mongoose.connection.readyState === 1
+        ? 'Connected'
+        : 'Disconnected',
+
+    routes: allRoutesLoaded
       ? 'Loaded'
-      : routesError
-        ? 'Failed'
-        : 'Loading',
+      : 'Partial / Failed',
+
+    routeStatus,
+
+    routeErrors,
+
     message: '✅ Server is running'
   });
 });
@@ -58,92 +77,196 @@ app.get('/api/health', (req, res) => {
 // ========================
 
 app.get('/', (req, res) => {
+  const allRoutesLoaded =
+    Object.values(routeStatus).every(
+      (status) => status === 'Loaded'
+    );
+
   res.json({
     message: '🏆 Vault Khazana Backend API',
     version: '1.0.0',
     status: 'Online',
-    database: mongoose.connection.readyState === 1
-      ? 'Connected'
-      : 'Disconnected',
-    routes: routesLoaded
+
+    database:
+      mongoose.connection.readyState === 1
+        ? 'Connected'
+        : 'Disconnected',
+
+    routes: allRoutesLoaded
       ? 'Loaded'
-      : routesError
-        ? 'Failed'
-        : 'Loading'
+      : 'Partial / Failed',
+
+    routeStatus,
+
+    message_detail:
+      'Backend server is running'
   });
 });
 
 // ========================
-// LOAD API ROUTES
+// LOAD ONE ROUTE
+// ========================
+
+async function loadSingleRoute(
+  routeName,
+  routeFile,
+  mountPath
+) {
+  try {
+    console.log(
+      `🔎 Loading ${routeName} routes...`
+    );
+
+    const routeModule = await import(routeFile);
+
+    if (!routeModule.default) {
+      throw new Error(
+        `${routeFile} does not export a default router.`
+      );
+    }
+
+    app.use(
+      mountPath,
+      routeModule.default
+    );
+
+    routeStatus[routeName] = 'Loaded';
+
+    console.log(
+      `✅ ${routeName} routes loaded successfully`
+    );
+
+  } catch (error) {
+
+    routeStatus[routeName] = 'Failed';
+
+    routeErrors[routeName] =
+      error.stack || error.message || String(error);
+
+    console.error('');
+    console.error(
+      `❌ ${routeName.toUpperCase()} ROUTE IMPORT FAILED`
+    );
+    console.error(
+      '────────────────────────────────────────'
+    );
+    console.error(
+      error.stack || error
+    );
+    console.error(
+      '────────────────────────────────────────'
+    );
+    console.error('');
+  }
+}
+
+// ========================
+// LOAD ALL API ROUTES
 // ========================
 
 async function loadRoutes() {
-  try {
-    console.log('🔄 Loading API routes...');
 
-    const { default: authRoutes } =
-      await import('./routes/auth.js');
+  console.log('');
+  console.log('🔄 Starting API route diagnostics...');
+  console.log('');
 
-    const { default: productRoutes } =
-      await import('./routes/products.js');
+  await loadSingleRoute(
+    'auth',
+    './routes/auth.js',
+    '/api/auth'
+  );
 
-    const { default: cartRoutes } =
-      await import('./routes/cart.js');
+  await loadSingleRoute(
+    'products',
+    './routes/products.js',
+    '/api/products'
+  );
 
-    const { default: orderRoutes } =
-      await import('./routes/orders.js');
+  await loadSingleRoute(
+    'cart',
+    './routes/cart.js',
+    '/api/cart'
+  );
 
-    // Authentication
-    app.use('/api/auth', authRoutes);
+  await loadSingleRoute(
+    'orders',
+    './routes/orders.js',
+    '/api/orders'
+  );
 
-    // Products
-    app.use('/api/products', productRoutes);
+  console.log('');
+  console.log('📊 ROUTE DIAGNOSTIC RESULT');
+  console.log('────────────────────────────────────────');
+  console.log(
+    `Auth:     ${routeStatus.auth}`
+  );
+  console.log(
+    `Products: ${routeStatus.products}`
+  );
+  console.log(
+    `Cart:     ${routeStatus.cart}`
+  );
+  console.log(
+    `Orders:   ${routeStatus.orders}`
+  );
+  console.log('────────────────────────────────────────');
+  console.log('');
 
-    // Cart
-    app.use('/api/cart', cartRoutes);
+  const failedRoutes = Object.entries(routeStatus)
+    .filter(([, status]) => status === 'Failed')
+    .map(([name]) => name);
 
-    // Orders
-    app.use('/api/orders', orderRoutes);
-
-    routesLoaded = true;
-
-    console.log('✅ API routes loaded successfully');
-
-    // ========================
-    // 404 HANDLER
-    // ========================
-
-    app.use((req, res) => {
-      res.status(404).json({
-        success: false,
-        message: `Route ${req.originalUrl} not found`
-      });
-    });
-
-    // ========================
-    // ERROR HANDLER
-    // ========================
-
-    app.use((err, req, res, next) => {
-      console.error('❌ Error:', err.message);
-
-      res.status(err.statusCode || 500).json({
-        success: false,
-        statusCode: err.statusCode || 500,
-        message: err.message || 'Internal Server Error'
-      });
-    });
-
-  } catch (error) {
-    routesError = error;
-
-    console.error('❌ API route startup error:');
-    console.error(error);
-
+  if (failedRoutes.length === 0) {
+    console.log(
+      '✅ ALL API ROUTES LOADED SUCCESSFULLY'
+    );
+  } else {
     console.error(
-      '⚠️ Server will remain online so the deployment platform can detect the port.'
+      `❌ Failed route(s): ${failedRoutes.join(', ')}`
     );
   }
+
+  console.log('');
+
+  installFinalHandlers();
+}
+
+// ========================
+// 404 + ERROR HANDLERS
+// ========================
+
+function installFinalHandlers() {
+
+  if (finalHandlersInstalled) {
+    return;
+  }
+
+  finalHandlersInstalled = true;
+
+  // 404 HANDLER
+  app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      message: `Route ${req.originalUrl} not found`
+    });
+  });
+
+  // ERROR HANDLER
+  app.use((err, req, res, next) => {
+
+    console.error('❌ Express Error:');
+    console.error(
+      err.stack || err.message || err
+    );
+
+    res.status(err.statusCode || 500).json({
+      success: false,
+      statusCode: err.statusCode || 500,
+      message:
+        err.message ||
+        'Internal Server Error'
+    });
+  });
 }
 
 // ========================
@@ -151,25 +274,39 @@ async function loadRoutes() {
 // ========================
 
 async function connectDatabase() {
+
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
+
     console.error(
       '❌ MONGODB_URI environment variable is missing.'
     );
+
     return false;
   }
 
   try {
+
+    console.log(
+      '🔄 Connecting to MongoDB...'
+    );
+
     await mongoose.connect(uri);
 
-    console.log('✅ MongoDB connected successfully');
+    console.log(
+      '✅ MongoDB connected successfully'
+    );
 
     return true;
 
   } catch (error) {
+
     console.error(
-      '❌ MongoDB connection error:',
+      '❌ MongoDB connection error:'
+    );
+
+    console.error(
       error.message
     );
 
@@ -187,32 +324,39 @@ async function connectDatabase() {
 
 // IMPORTANT:
 // Start HTTP server FIRST.
-// This allows Abasthan to detect the live port
-// before loading routes or connecting to MongoDB.
+// This allows Abasthan to detect the port
+// before route loading or database connection.
 
-const server = app.listen(PORT, () => {
+const server = app.listen(
+  PORT,
+  () => {
 
-  console.log(`
+    console.log(`
 ╔════════════════════════════════════════╗
 ║   🏆 VAULT KHAZANA BACKEND            ║
 ║   Server running on port ${PORT}        ║
 ║   Environment: ${process.env.NODE_ENV || 'production'} ║
 ║   Database: Connecting...              ║
 ╚════════════════════════════════════════╝
-  `);
+    `);
 
-  // Load routes and connect to MongoDB
-  // only AFTER the server is listening.
+    // Diagnose routes first.
+    // Connect to MongoDB afterward.
 
-  loadRoutes()
-    .then(() => connectDatabase())
-    .catch((error) => {
-      console.error(
-        '❌ Startup initialization error:',
-        error
-      );
-    });
-});
+    loadRoutes()
+      .then(() => connectDatabase())
+      .catch((error) => {
+
+        console.error(
+          '❌ Startup initialization error:'
+        );
+
+        console.error(
+          error.stack || error
+        );
+      });
+  }
+);
 
 // ========================
 // GRACEFUL SHUTDOWN
@@ -230,7 +374,9 @@ async function shutdown(signal) {
 
       await mongoose.disconnect();
 
-      console.log('✅ MongoDB disconnected');
+      console.log(
+        '✅ MongoDB disconnected'
+      );
 
     } catch (error) {
 
@@ -238,15 +384,24 @@ async function shutdown(signal) {
         '❌ MongoDB disconnect error:',
         error.message
       );
-
     }
 
     process.exit(0);
   });
 }
 
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on(
+  'SIGINT',
+  () => shutdown('SIGINT')
+);
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on(
+  'SIGTERM',
+  () => shutdown('SIGTERM')
+);
+
+// ========================
+// EXPORT APP
+// ========================
 
 export default app;
