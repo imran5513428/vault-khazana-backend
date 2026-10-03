@@ -275,7 +275,7 @@ function installFinalHandlers() {
 
 async function connectDatabase() {
 
-  const uri = 'mongodb://Admin:LG49359iGLxrYMQ@ac-jizi34c-shard-00-00.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-01.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-02.mw3for0.mongodb.net:27017/?ssl=true&replicaSet=atlas-spixpz-shard-0&authSource=admin&appName=Cluster0';
+  const uri = 'mongodb://Admin:or42LdPtAODwPOF8@ac-jizi34c-shard-00-00.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-01.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-02.mw3for0.mongodb.net:27017/?ssl=true&replicaSet=atlas-spixpz-shard-0&authSource=admin&appName=Cluster0';
 
   try {
 
