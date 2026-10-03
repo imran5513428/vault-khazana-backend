@@ -1,91 +1,433 @@
-import express from 'express';
-import {
-  createOrder,
-  getOrderById,
-  getUserOrders,
-  getAllOrders,
-  updateOrderStatus,
-  cancelOrder,
-  getOrderStats,
-  searchOrders
-} from '../controllers/orderController.js';
-import {
-  protect,
-  adminOnly,
-  guestOrUser
-} from '../middleware/auth.js';
+import mongoose from 'mongoose';
 
-const router = express.Router();
+const orderSchema = new mongoose.Schema({
+
+  orderNumber: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+
+  // ========================
+  // CUSTOMER
+  // ========================
+
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false,
+    default: null
+  },
+
+  // ========================
+  // ORDER ITEMS
+  // ========================
+
+  items: [{
+
+    productId: {
+      type: String,
+      required: true
+    },
+
+    productName: {
+      type: String,
+      required: true
+    },
+
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1
+    },
+
+    pricePerUnit: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+
+    subtotal: {
+      type: Number,
+      required: true,
+      min: 0
+    }
+
+  }],
+
+  // ========================
+  // SHIPPING ADDRESS
+  // ========================
+
+  shippingAddress: {
+
+    fullName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true
+    },
+
+    phone: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    street: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    city: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    province: {
+      type: String,
+      trim: true
+    },
+
+    postalCode: {
+      type: String,
+      trim: true
+    },
+
+    country: {
+      type: String,
+      default: 'Pakistan',
+      trim: true
+    }
+
+  },
+
+  // ========================
+  // BILLING ADDRESS
+  // ========================
+
+  billingAddress: {
+
+    fullName: {
+      type: String,
+      trim: true
+    },
+
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true
+    },
+
+    phone: {
+      type: String,
+      trim: true
+    },
+
+    street: {
+      type: String,
+      trim: true
+    },
+
+    city: {
+      type: String,
+      trim: true
+    },
+
+    province: {
+      type: String,
+      trim: true
+    },
+
+    postalCode: {
+      type: String,
+      trim: true
+    },
+
+    country: {
+      type: String,
+      default: 'Pakistan',
+      trim: true
+    }
+
+  },
+
+  // ========================
+  // PRICING
+  // ========================
+
+  subtotal: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0
+  },
+
+  shippingCost: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  tax: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  discount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  discountCode: String,
+
+  total: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+
+  // ========================
+  // PAYMENT
+  // ========================
+
+  paymentMethod: {
+    type: String,
+    enum: [
+      'stripe',
+      'jazzcash',
+      'cod'
+    ],
+    required: true
+  },
+
+  paymentStatus: {
+    type: String,
+    enum: [
+      'pending',
+      'completed',
+      'failed',
+      'refunded'
+    ],
+    default: 'pending'
+  },
+
+  stripePaymentIntentId: String,
+
+  jazzcashTransactionId: String,
+
+  paymentError: String,
+
+  // ========================
+  // ORDER STATUS
+  // ========================
+
+  orderStatus: {
+    type: String,
+    enum: [
+      'pending',
+      'confirmed',
+      'processing',
+      'shipped',
+      'delivered',
+      'cancelled'
+    ],
+    default: 'pending'
+  },
+
+  statusHistory: [{
+
+    status: String,
+
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+
+    notes: String
+
+  }],
+
+  // ========================
+  // DELIVERY
+  // ========================
+
+  trackingNumber: String,
+
+  estimatedDelivery: Date,
+
+  // ========================
+  // OTHER
+  // ========================
+
+  notes: String,
+
+  guestCheckout: {
+    type: Boolean,
+    default: true
+  },
+
+  ip: String,
+
+  userAgent: String,
+
+  paidAt: Date,
+
+  deliveredAt: Date
+
+}, {
+  timestamps: true
+});
 
 // ========================
-// ORDER CREATION
+// INDEXES
 // ========================
 
-// Guest OR logged-in customer can create an order.
-// createOrder() performs the full server-side validation,
-// product lookup, MOQ/step validation, and price calculation.
-router.post('/', guestOrUser, createOrder);
+orderSchema.index({
+  userId: 1
+});
+
+orderSchema.index({
+  orderNumber: 1
+});
+
+orderSchema.index({
+  orderStatus: 1
+});
+
+orderSchema.index({
+  paymentStatus: 1
+});
+
+orderSchema.index({
+  createdAt: -1
+});
 
 // ========================
-// PROTECTED CUSTOMER ROUTES
+// AUTO-GENERATE ORDER NUMBER
 // ========================
 
-// Get logged-in user's orders
-router.get('/my-orders/list', protect, getUserOrders);
+orderSchema.pre(
+  'save',
+  async function(next) {
 
-// ========================
-// PROTECTED ADMIN ROUTES
-// ========================
+    if (
+      this.isNew &&
+      !this.orderNumber
+    ) {
 
-// Get all orders (admin)
-router.get(
-  '/admin/all',
-  protect,
-  adminOnly,
-  getAllOrders
+      try {
+
+        const count =
+          await mongoose
+            .model('Order')
+            .countDocuments();
+
+        const year =
+          new Date().getFullYear();
+
+        const month =
+          String(
+            new Date().getMonth() + 1
+          ).padStart(2, '0');
+
+        this.orderNumber =
+          `VK-${year}${month}-${String(
+            count + 1
+          ).padStart(5, '0')}`;
+
+      } catch (error) {
+
+        return next(error);
+      }
+    }
+
+    next();
+  }
 );
 
-// Search orders (admin)
-router.get(
-  '/admin/search',
-  protect,
-  adminOnly,
-  searchOrders
-);
-
-// Get order statistics (admin)
-router.get(
-  '/admin/stats',
-  protect,
-  adminOnly,
-  getOrderStats
-);
-
 // ========================
-// ORDER-SPECIFIC ROUTES
+// UPDATE ORDER STATUS
 // ========================
 
-// Cancel order
-router.put(
-  '/:orderId/cancel',
-  protect,
-  cancelOrder
-);
+orderSchema.methods.updateStatus =
+  function(
+    newStatus,
+    notes = ''
+  ) {
 
-// Update order status (admin)
-router.put(
-  '/:orderId/status',
-  protect,
-  adminOnly,
-  updateOrderStatus
-);
+    this.orderStatus =
+      newStatus;
 
-// Get specific order
-// Keep this route after all specific routes above.
-router.get(
-  '/:orderId',
-  protect,
-  getOrderById
-);
+    this.statusHistory.push({
+      status: newStatus,
+      timestamp: new Date(),
+      notes
+    });
 
-export default router;
+    if (
+      newStatus === 'delivered'
+    ) {
+      this.deliveredAt =
+        new Date();
+    }
+
+    return this;
+  };
+
+// ========================
+// MARK PAYMENT COMPLETED
+// ========================
+
+orderSchema.methods.markPaymentCompleted =
+  function(
+    paymentReference = null
+  ) {
+
+    this.paymentStatus =
+      'completed';
+
+    this.paidAt =
+      new Date();
+
+    if (paymentReference) {
+
+      if (
+        this.paymentMethod === 'stripe'
+      ) {
+        this.stripePaymentIntentId =
+          paymentReference;
+      }
+
+      if (
+        this.paymentMethod === 'jazzcash'
+      ) {
+        this.jazzcashTransactionId =
+          paymentReference;
+      }
+    }
+
+    return this;
+  };
+
+// ========================
+// EXPORT MODEL
+// ========================
+
+const Order =
+  mongoose.models.Order ||
+  mongoose.model(
+    'Order',
+    orderSchema
+  );
+
+export default Order;
