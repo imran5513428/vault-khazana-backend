@@ -28,7 +28,10 @@ let finalHandlersInstalled = false;
 // ========================
 
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.urlencoded({
+  limit: '10mb',
+  extended: true
+}));
 
 app.use(cors({
   origin: [
@@ -36,8 +39,18 @@ app.use(cors({
     process.env.FRONTEND_PRODUCTION_URL
   ].filter(Boolean),
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+    'PATCH',
+    'OPTIONS'
+  ],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization'
+  ]
 }));
 
 // ========================
@@ -45,6 +58,7 @@ app.use(cors({
 // ========================
 
 app.get('/api/health', (req, res) => {
+
   const allRoutesLoaded =
     Object.values(routeStatus).every(
       (status) => status === 'Loaded'
@@ -52,23 +66,29 @@ app.get('/api/health', (req, res) => {
 
   res.json({
     status: 'OK',
-    timestamp: new Date().toISOString(),
-    version: process.env.APP_VERSION || '1.0.0',
+
+    timestamp:
+      new Date().toISOString(),
+
+    version:
+      process.env.APP_VERSION || '1.0.0',
 
     database:
       mongoose.connection.readyState === 1
         ? 'Connected'
         : 'Disconnected',
 
-    routes: allRoutesLoaded
-      ? 'Loaded'
-      : 'Partial / Failed',
+    routes:
+      allRoutesLoaded
+        ? 'Loaded'
+        : 'Partial / Failed',
 
     routeStatus,
 
     routeErrors,
 
-    message: '✅ Server is running'
+    message:
+      '✅ Server is running'
   });
 });
 
@@ -77,24 +97,31 @@ app.get('/api/health', (req, res) => {
 // ========================
 
 app.get('/', (req, res) => {
+
   const allRoutesLoaded =
     Object.values(routeStatus).every(
       (status) => status === 'Loaded'
     );
 
   res.json({
-    message: '🏆 Vault Khazana Backend API',
-    version: '1.0.0',
-    status: 'Online',
+    message:
+      '🏆 Vault Khazana Backend API',
+
+    version:
+      '1.0.0',
+
+    status:
+      'Online',
 
     database:
       mongoose.connection.readyState === 1
         ? 'Connected'
         : 'Disconnected',
 
-    routes: allRoutesLoaded
-      ? 'Loaded'
-      : 'Partial / Failed',
+    routes:
+      allRoutesLoaded
+        ? 'Loaded'
+        : 'Partial / Failed',
 
     routeStatus,
 
@@ -112,12 +139,15 @@ async function loadSingleRoute(
   routeFile,
   mountPath
 ) {
+
   try {
+
     console.log(
       `🔎 Loading ${routeName} routes...`
     );
 
-    const routeModule = await import(routeFile);
+    const routeModule =
+      await import(routeFile);
 
     if (!routeModule.default) {
       throw new Error(
@@ -130,7 +160,8 @@ async function loadSingleRoute(
       routeModule.default
     );
 
-    routeStatus[routeName] = 'Loaded';
+    routeStatus[routeName] =
+      'Loaded';
 
     console.log(
       `✅ ${routeName} routes loaded successfully`
@@ -138,24 +169,32 @@ async function loadSingleRoute(
 
   } catch (error) {
 
-    routeStatus[routeName] = 'Failed';
+    routeStatus[routeName] =
+      'Failed';
 
     routeErrors[routeName] =
-      error.stack || error.message || String(error);
+      error.stack ||
+      error.message ||
+      String(error);
 
     console.error('');
+
     console.error(
       `❌ ${routeName.toUpperCase()} ROUTE IMPORT FAILED`
     );
+
     console.error(
       '────────────────────────────────────────'
     );
+
     console.error(
       error.stack || error
     );
+
     console.error(
       '────────────────────────────────────────'
     );
+
     console.error('');
   }
 }
@@ -167,7 +206,9 @@ async function loadSingleRoute(
 async function loadRoutes() {
 
   console.log('');
-  console.log('🔄 Starting API route diagnostics...');
+  console.log(
+    '🔄 Starting API route diagnostics...'
+  );
   console.log('');
 
   await loadSingleRoute(
@@ -195,32 +236,54 @@ async function loadRoutes() {
   );
 
   console.log('');
-  console.log('📊 ROUTE DIAGNOSTIC RESULT');
-  console.log('────────────────────────────────────────');
+  console.log(
+    '📊 ROUTE DIAGNOSTIC RESULT'
+  );
+
+  console.log(
+    '────────────────────────────────────────'
+  );
+
   console.log(
     `Auth:     ${routeStatus.auth}`
   );
+
   console.log(
     `Products: ${routeStatus.products}`
   );
+
   console.log(
     `Cart:     ${routeStatus.cart}`
   );
+
   console.log(
     `Orders:   ${routeStatus.orders}`
   );
-  console.log('────────────────────────────────────────');
+
+  console.log(
+    '────────────────────────────────────────'
+  );
+
   console.log('');
 
-  const failedRoutes = Object.entries(routeStatus)
-    .filter(([, status]) => status === 'Failed')
-    .map(([name]) => name);
+  const failedRoutes =
+    Object.entries(routeStatus)
+      .filter(
+        ([, status]) =>
+          status === 'Failed'
+      )
+      .map(
+        ([name]) => name
+      );
 
   if (failedRoutes.length === 0) {
+
     console.log(
       '✅ ALL API ROUTES LOADED SUCCESSFULLY'
     );
+
   } else {
+
     console.error(
       `❌ Failed route(s): ${failedRoutes.join(', ')}`
     );
@@ -243,25 +306,37 @@ function installFinalHandlers() {
 
   finalHandlersInstalled = true;
 
-  // 404 HANDLER
   app.use((req, res) => {
+
     res.status(404).json({
       success: false,
-      message: `Route ${req.originalUrl} not found`
+
+      message:
+        `Route ${req.originalUrl} not found`
     });
   });
 
-  // ERROR HANDLER
   app.use((err, req, res, next) => {
 
-    console.error('❌ Express Error:');
     console.error(
-      err.stack || err.message || err
+      '❌ Express Error:'
     );
 
-    res.status(err.statusCode || 500).json({
+    console.error(
+      err.stack ||
+      err.message ||
+      err
+    );
+
+    res.status(
+      err.statusCode || 500
+    ).json({
+
       success: false,
-      statusCode: err.statusCode || 500,
+
+      statusCode:
+        err.statusCode || 500,
+
       message:
         err.message ||
         'Internal Server Error'
@@ -275,20 +350,31 @@ function installFinalHandlers() {
 
 async function connectDatabase() {
 
-  const uri = 'mongodb://Admin:or42LdPtAODwPOF8@ac-jizi34c-shard-00-00.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-01.mw3for0.mongodb.net:27017,ac-jizi34c-shard-00-02.mw3for0.mongodb.net:27017/?ssl=true&replicaSet=atlas-spixpz-shard-0&authSource=admin&appName=Cluster0';
+  const uri =
+    process.env.MONGODB_URI;
+
+  if (!uri) {
+
+    console.error(
+      '❌ MONGODB_URI environment variable is missing.'
+    );
+
+    return false;
+  }
 
   try {
 
+    const parsedUri =
+      new URL(uri);
+
     console.log(
-      '🔐 MongoDB diagnostic protocol: mongodb://'
+      '🔐 MongoDB diagnostic protocol:',
+      parsedUri.protocol
     );
 
     console.log(
-      '🔐 MongoDB diagnostic hostname: ac-jizi34c-shard-00-00.mw3for0.mongodb.net'
-    );
-
-    console.log(
-      '🔐 MongoDB diagnostic database: vault-khazana'
+      '🔐 MongoDB diagnostic hostname:',
+      parsedUri.hostname
     );
 
     console.log(
@@ -330,36 +416,34 @@ async function connectDatabase() {
 // This allows Abasthan to detect the port
 // before route loading or database connection.
 
-const server = app.listen(
-  PORT,
-  () => {
+const server =
+  app.listen(
+    PORT,
+    () => {
 
-    console.log(`
+      console.log(`
 ╔════════════════════════════════════════╗
 ║   🏆 VAULT KHAZANA BACKEND            ║
 ║   Server running on port ${PORT}        ║
 ║   Environment: ${process.env.NODE_ENV || 'production'} ║
 ║   Database: Connecting...              ║
 ╚════════════════════════════════════════╝
-    `);
+      `);
 
-    // Diagnose routes first.
-    // Connect to MongoDB afterward.
+      loadRoutes()
+        .then(() => connectDatabase())
+        .catch((error) => {
 
-    loadRoutes()
-      .then(() => connectDatabase())
-      .catch((error) => {
+          console.error(
+            '❌ Startup initialization error:'
+          );
 
-        console.error(
-          '❌ Startup initialization error:'
-        );
-
-        console.error(
-          error.stack || error
-        );
-      });
-  }
-);
+          console.error(
+            error.stack || error
+          );
+        });
+    }
+  );
 
 // ========================
 // GRACEFUL SHUTDOWN
