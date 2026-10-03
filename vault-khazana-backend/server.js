@@ -288,6 +288,20 @@ async function connectDatabase() {
 
   try {
 
+    const parsedUri = new URL(uri);
+
+    console.log(
+      `🔐 MongoDB diagnostic hostname: ${parsedUri.hostname}`
+    );
+
+    console.log(
+      `🔐 MongoDB diagnostic protocol: ${parsedUri.protocol}`
+    );
+
+    console.log(
+      `🔐 MongoDB diagnostic database: ${parsedUri.pathname === '/' ? '(none specified)' : parsedUri.pathname.slice(1)}`
+    );
+
     console.log(
       '🔄 Connecting to MongoDB...'
     );
