@@ -667,4 +667,16 @@ export const getOrderStats =
 
       res.json({
         success: true,
-       
+        stats: {
+          totalOrders,
+          pendingOrders,
+          confirmedOrders,
+          processingOrders,
+          shippedOrders,
+          deliveredOrders,
+          cancelledOrders,
+          totalRevenue
+        }
+      });
+    }
+  );
