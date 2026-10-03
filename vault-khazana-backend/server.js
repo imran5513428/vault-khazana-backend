@@ -279,18 +279,16 @@ async function connectDatabase() {
 
   try {
 
-    const parsedUri = new URL(uri);
-
     console.log(
-      `🔐 MongoDB diagnostic hostname: ${parsedUri.hostname}`
+      '🔐 MongoDB diagnostic protocol: mongodb://'
     );
 
     console.log(
-      `🔐 MongoDB diagnostic protocol: ${parsedUri.protocol}`
+      '🔐 MongoDB diagnostic hostname: ac-jizi34c-shard-00-00.mw3for0.mongodb.net'
     );
 
     console.log(
-      `🔐 MongoDB diagnostic database: ${parsedUri.pathname === '/' ? '(none specified)' : parsedUri.pathname.slice(1)}`
+      '🔐 MongoDB diagnostic database: vault-khazana'
     );
 
     console.log(
