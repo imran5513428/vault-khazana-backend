@@ -232,51 +232,32 @@ async function connectDatabase() {
   const uri = process.env.MONGODB_URI;
 
   if (!uri) {
-    console.error('❌ MONGODB_URI environment variable is missing.');
-    console.error('⚠️ Server will remain online.');
-    return;
-  }
-
-  try {
-
-    const parsedUri = new URL(uri);
-
-    console.log(
-      `🔐 MongoDB diagnostic protocol: ${parsedUri.protocol}`
-    );
-
-    console.log(
-      `🔐 MongoDB diagnostic hostname: ${parsedUri.hostname}`
-    );
-
-  } catch (error) {
-
     console.error(
-      '❌ MongoDB URI format could not be parsed.'
+      '❌ MONGODB_URI environment variable is missing.'
     );
-
-    console.error(
-      error.message
-    );
-
     console.error(
       '⚠️ Server will remain online.'
     );
-
     return;
   }
 
   try {
 
-    console.log('🔄 Connecting to MongoDB...');
+    console.log(
+      '🔄 Connecting to MongoDB using MONGODB_URI...'
+    );
 
     await mongoose.connect(uri);
 
-    console.log('✅ MongoDB connected successfully');
+    console.log(
+      '✅ MongoDB connected successfully'
+    );
 
   } catch (error) {
 
-    console.error('❌ MongoDB connection error:');
+    console.error(
+      '❌ MongoDB connection error:'
+    );
 
     console.error(
       error.message || error
