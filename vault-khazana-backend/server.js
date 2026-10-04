@@ -231,15 +231,34 @@ async function connectDatabase() {
 
   const uri = process.env.MONGODB_URI;
 
+  console.log('');
+  console.log('🔐 ═══════════════════════════════════════');
+  console.log('🔐 MONGODB_URI DIAGNOSTIC');
+  console.log('🔐 ═══════════════════════════════════════');
+
   if (!uri) {
+    console.log('🔐 STATUS: ❌ MISSING');
     console.error(
       '❌ MONGODB_URI environment variable is missing.'
     );
     console.error(
       '⚠️ Server will remain online.'
     );
+    console.log('🔐 ═══════════════════════════════════════');
+    console.log('');
     return;
   }
+
+  const uriPreview = uri
+    .substring(0, 20) +
+    '***' +
+    uri.substring(uri.length - 20);
+
+  console.log(`🔐 STATUS: ✅ SET`);
+  console.log(`🔐 PREVIEW: ${uriPreview}`);
+  console.log(`🔐 STARTS WITH: ${uri.substring(0, 12)}`);
+  console.log('🔐 ═══════════════════════════════════════');
+  console.log('');
 
   try {
 
