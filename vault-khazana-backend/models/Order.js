@@ -279,4 +279,51 @@ orderSchema.pre('save', async function(next) {
 orderSchema.methods.updateStatus = function(newStatus, notes = '') {
   this.orderStatus = newStatus;
 
-  this
+  if (!Array.isArray(this.statusHistory)) {
+    this.statusHistory = [];
+  }
+
+  this.statusHistory.push({
+    status: newStatus,
+    timestamp: new Date(),
+    notes
+  });
+
+  if (newStatus === 'delivered') {
+    this.deliveredAt = new Date();
+  }
+
+  this.updatedAt = new Date();
+
+  return this;
+};
+
+// ========================
+// MARK PAYMENT COMPLETED
+// ========================
+
+orderSchema.methods.markPaymentCompleted = function(paymentReference = null) {
+  this.paymentStatus = 'completed';
+  this.paidAt = new Date();
+  this.paymentError = undefined;
+
+  if (this.paymentMethod === 'stripe' && paymentReference) {
+    this.stripePaymentIntentId = paymentReference;
+  }
+
+  if (this.paymentMethod === 'jazzcash' && paymentReference) {
+    this.jazzcashTransactionId = paymentReference;
+  }
+
+  this.updatedAt = new Date();
+
+  return this;
+};
+
+// ========================
+// EXPORT MODEL
+// ========================
+
+const Order = mongoose.model('Order', orderSchema);
+
+export default Order;
