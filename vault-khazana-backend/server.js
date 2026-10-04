@@ -194,3 +194,226 @@ async function loadRoutes() {
   console.log('📊 ROUTE DIAGNOSTIC RESULT');
   console.log('────────────────────────────────────────');
   console.log(
+    `Auth: ${routeStatus.auth}`
+  );
+  console.log(
+    `Products: ${routeStatus.products}`
+  );
+  console.log(
+    `Cart: ${routeStatus.cart}`
+  );
+  console.log(
+    `Orders: ${routeStatus.orders}`
+  );
+  console.log('────────────────────────────────────────');
+  console.log('');
+
+  const failedRoutes = Object.entries(routeStatus)
+    .filter(([, status]) => status === 'Failed')
+    .map(([name]) => name);
+
+  if (failedRoutes.length > 0) {
+    console.error(
+      `❌ Failed route(s): ${failedRoutes.join(', ')}`
+    );
+  } else {
+    console.log('✅ All API routes loaded successfully');
+  }
+
+  console.log('');
+}
+
+// ========================
+// MONGODB CONNECTION
+// ========================
+
+async function connectDatabase() {
+
+  const uri = process.env.MONGODB_URI;
+
+  if (!uri) {
+    console.error('❌ MONGODB_URI environment variable is missing.');
+    console.error('⚠️ Server will remain online.');
+    return;
+  }
+
+  try {
+
+    const parsedUri = new URL(uri);
+
+    console.log(
+      `🔐 MongoDB diagnostic protocol: ${parsedUri.protocol}`
+    );
+
+    console.log(
+      `🔐 MongoDB diagnostic hostname: ${parsedUri.hostname}`
+    );
+
+  } catch (error) {
+
+    console.error(
+      '❌ MongoDB URI format could not be parsed.'
+    );
+
+    console.error(
+      error.message
+    );
+
+    console.error(
+      '⚠️ Server will remain online.'
+    );
+
+    return;
+  }
+
+  try {
+
+    console.log('🔄 Connecting to MongoDB...');
+
+    await mongoose.connect(uri);
+
+    console.log('✅ MongoDB connected successfully');
+
+  } catch (error) {
+
+    console.error('❌ MongoDB connection error:');
+
+    console.error(
+      error.message || error
+    );
+
+    console.error(
+      '⚠️ Server will remain online.'
+    );
+  }
+}
+
+// ========================
+// FINAL ERROR HANDLERS
+// ========================
+
+function installFinalHandlers() {
+
+  if (finalHandlersInstalled) {
+    return;
+  }
+
+  finalHandlersInstalled = true;
+
+  // 404 handler
+  app.use((req, res) => {
+    res.status(404).json({
+      status: 'error',
+      message: `Route not found: ${req.method} ${req.originalUrl}`
+    });
+  });
+
+  // Global error handler
+  app.use((error, req, res, next) => {
+
+    console.error('❌ GLOBAL ERROR HANDLER');
+
+    console.error(
+      error.stack || error
+    );
+
+    const statusCode =
+      error.statusCode ||
+      error.status ||
+      500;
+
+    res.status(statusCode).json({
+      status: 'error',
+      message:
+        error.message ||
+        'Internal server error'
+    });
+  });
+}
+
+// ========================
+// START SERVER
+// ========================
+
+const server = app.listen(PORT, () => {
+
+  console.log('');
+  console.log('╔════════════════════════════════════════╗');
+  console.log('║ 🏆 VAULT KHAZANA BACKEND              ║');
+  console.log(`║ Server running on port ${PORT}           ║`);
+  console.log('║ Environment: production                ║');
+  console.log('║ Database: Connecting...                ║');
+  console.log('╚════════════════════════════════════════╝');
+  console.log('');
+
+  loadRoutes()
+    .then(() => {
+      installFinalHandlers();
+      return connectDatabase();
+    })
+    .catch((error) => {
+
+      console.error(
+        '❌ Backend startup sequence failed:'
+      );
+
+      console.error(
+        error.stack || error
+      );
+
+      installFinalHandlers();
+    });
+});
+
+// ========================
+// GRACEFUL SHUTDOWN
+// ========================
+
+async function gracefulShutdown(signal) {
+
+  console.log('');
+  console.log(
+    `🛑 ${signal} received. Shutting down gracefully...`
+  );
+
+  server.close(async () => {
+
+    try {
+
+      if (
+        mongoose.connection.readyState !== 0
+      ) {
+        await mongoose.connection.close();
+        console.log('✅ MongoDB connection closed');
+      }
+
+      console.log('✅ Server shutdown complete');
+      process.exit(0);
+
+    } catch (error) {
+
+      console.error(
+        '❌ Error during shutdown:',
+        error.message || error
+      );
+
+      process.exit(1);
+    }
+  });
+}
+
+process.on(
+  'SIGINT',
+  () => gracefulShutdown('SIGINT')
+);
+
+process.on(
+  'SIGTERM',
+  () => gracefulShutdown('SIGTERM')
+);
+
+// ========================
+// EXPORT APP
+// ========================
+
+export default app;
